@@ -1,0 +1,53 @@
+name: Java CI/CD Pipeline  
+
+on:  
+  push:  
+    branches:  
+      - main  
+  pull_request:  
+    branches:  
+      - main  
+
+jobs:  
+  build:  
+    runs-on: ${{ matrix.os }}  
+    strategy:  
+      matrix:  
+        os: [ubuntu-latest, windows-latest, macos-latest]  
+
+    steps:  
+      - name: Checkout Code  
+        uses: actions/checkout@v3  
+
+      - name: Set up JDK  
+        uses: actions/setup-java@v3  
+        with:  
+          java-version: '17'  
+
+      - name: Compile Project  
+        run: |  
+          mkdir -p bin  
+          javac -d bin src/*.java  
+
+      - name: Run Tests  
+        run: |  
+          mkdir -p bin/tests  
+          javac -cp bin -d bin/tests src/WordCounterTest.java  
+          java -cp bin/tests org.junit.platform.console.ConsoleLauncher --scan-classpath  
+
+  deploy:  
+    runs-on: ubuntu-latest  
+    needs: build  
+    steps:  
+      - name: Checkout Code  
+        uses: actions/checkout@v3  
+
+      - name: Deploy to Remote Server  
+        env:  
+          HOST: ${{ secrets.HOST }}  
+          USER: ${{ secrets.USER }}  
+          KEY: ${{ secrets.KEY }}  
+        run: |  
+          echo "$KEY" > private_key.pem  
+          chmod 600 private_key.pem  
+          scp -i private_key.pem -o StrictHostKeyChecking=no ./bin/WordCounter.class $USER@$HOST:/path/to/deploy/
